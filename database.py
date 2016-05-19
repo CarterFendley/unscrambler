@@ -234,7 +234,7 @@ class WordPattern:
             word = word[:(-1*len(sub_strings[last_index]))]
         del sub_strings[last_index]
         
-        if len(sub_strings) == 1 and sub_strings[0] is "*":
+        if len(sub_strings) == 0:
             return True
         
         if self._wildCardSearch(sub_strings, word):
