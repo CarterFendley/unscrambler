@@ -1,7 +1,7 @@
+from email._header_value_parser import InvalidParameter
 import json
 import os
 import sys
-from email._header_value_parser import InvalidParameter
 
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
@@ -48,7 +48,8 @@ class DataBase:
             self.databases[word[0]][word]["conforms_to"] = []
             self.databases_changed_mask[word[0]] = True
             
-            self._analyzeForWord(word)
+            if len(self.patterns) != 0:
+                self._analyzeForWord(word)
     
     def hasWord(self, word):
         word = word.lower()
@@ -136,6 +137,7 @@ class DataBase:
         self.patterns[pattern].append(word)
         
     def close(self):
+        print("Saving database to disk...")
         for letter in self.databases:
             with open("%s/database.d/%s.json" %(self.directory, letter), "w") as f:
                 json.dump(self.databases[letter], f, indent=4, sort_keys=True)

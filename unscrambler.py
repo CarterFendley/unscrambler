@@ -2,6 +2,7 @@ import logging
 import optparse
 import sys
 
+#!/usr/bin/env python3
 from database import DataBase
 
 
@@ -9,9 +10,7 @@ logger = logging.getLogger('dashboard')
 log_datefmt = "%H:%M:%S"
 log_format = "%(asctime)s:%(msecs)03d %(levelname)-8s: %(name)-20s: %(message)s"
 
-#!/usr/bin/env python3
-
-
+ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
 class Unscrambler:
     def __init__(self, options):
@@ -25,11 +24,27 @@ class Unscrambler:
         if options.add_wordlist is not None:
             with open(options.add_wordlist, 'r') as file:
                 
+                count = 0
                 for word in file:
+                    word = word.lower()
                     word = word.replace("\n", "")
-                    print(word)
+                    
+                    #Checks if word is legal
+                    valid = True
+                    for char in word:
+                        if char not in ALPHABET:
+                            valid = False
+                            print("\"%s\" contains invalid characters" % word)
+                            break
+                        
+                    if not valid:
+                        continue 
+
                     if not self.database.hasWord(word):
                        self.database.addWord(word)
+                       count += 1
+                       
+                print("Added %s valid words to database" % count)
                     
             self.database.close()
             sys.exit(0)
