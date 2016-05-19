@@ -169,14 +169,10 @@ class WordPattern:
         self.pattern = pattern.lower()
     
     def conformsToFormat(self, word):
-        if self._conformsToWildCardFormat(word, self.pattern):
-            return True
-        return False
-                
-    
-    def _conformsToWildCardFormat(self, word, pattern):
         if self.pattern is "*":
             return True
+        
+        pattern = self.pattern
         
         #Splits the pattern into substrings at wildcards;
         sub_strings = []
@@ -199,6 +195,7 @@ class WordPattern:
                 #Adds text if in last position
                 if i == len(pattern)-1:
                     sub_strings.append(current_string)
+        #print(sub_strings)
         
         #If the pattern doesn't contain wildcards     
         if sub_strings is []:
@@ -223,9 +220,6 @@ class WordPattern:
         if sub_strings[0] is not "*":
             if word[:len(sub_strings[0])] is not sub_strings[0]:
                 return False
-            else:
-                if len(sub_strings) == 1: #If that was the only element
-                    return True
             word = word[len(sub_strings[0]):]
         del sub_strings[0] #First no longer needed
         
@@ -239,6 +233,9 @@ class WordPattern:
                     return True
             word = word[:(-1*len(sub_strings[last_index]))]
         del sub_strings[last_index]
+        
+        if len(sub_strings) == 1 and sub_strings[0] is "*":
+            return True
         
         if self._wildCardSearch(sub_strings, word):
             return True
