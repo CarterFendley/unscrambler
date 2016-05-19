@@ -1,18 +1,23 @@
 import json
 import os
 
+
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 NUMBERS = "123456790"
 
 class DataBase:
-    
+    VERSION_NUMBER = 0.1
     def __init__(self, directory, new=False):
         self.directory = directory
+        
         self.databases = {}
         self.databases_changed_mask = {}
         
+        self.info = {}
+        self.patterns = {}
         
         if(not new):
+            #Load all letter databases
             for letter in ALPHABET:
                 try:
                     with open("%s/database.d/%s.json" %(self.directory, letter)) as database:
@@ -21,18 +26,31 @@ class DataBase:
                 except:
                     print('Error while loading databases. Exiting process...')
                 sys.exit(1)
+                
+            #Load the info file   
+            with open("%s/database.d/info.json" % self.directory) as info:
+                self.info = json.info
+            
+            #Load all patterns from info file   
+            for pattern in self.info["known_patterns"]:
+                file_friendly_pattern = pattern.replace("*", ".")
+                with open("%s/database.d/patterns/%s.json" %(self.directory, file_friendly_pattern)) as f:
+                        self.patterns[pattern] = json.load(f)
         else:
             for letter in ALPHABET:
                 self.databases[letter] = {}
                 self.databases_changed_mask[letter] = False
-            os.makedirs("%s/database.d" %(self.directory))
-                
-    # TODO: Run this word through all existing formats
+            self.info["known_patterns"] = []
+            os.makedirs("%s/database.d/patterns" %(self.directory))
+            
     def addWord(self, word):
         word = word.lower()
         if word not in self.databases[word[0]]:
             self.databases[word[0]][word] = {}
+            self.databases[word[0]][word]["conforms_to"] = []
             self.databases_changed_mask[word[0]] = True
+            
+            self._analyzeForWord(word)
     
     def hasWord(self, word):
         word = word.lower()
@@ -42,15 +60,49 @@ class DataBase:
         except KeyError:
             print('invalid key: %s' % word[0])
         return False
+    
+    def getConformities(self, word):
+        return self.databases[word[0]][word]["conforms_to"]
+    
+    def getPatterns(self):
+        return self.info["known_pattern"]
+    
+    def addPattern(self, pattern):
+        self.info["known_patterns"].append(pattern)
+        self._analyzeFor(pattern)
+    
+    def _analyzeForWord(self, word):
+        for pattern in self.patterns:
+            p = WordPattern(pattern)
+            
+            if p.conformsToFormat(word):
+                self._addConformity(word, patter)
+    
+    def _analyzeForPattern(self, pattern):
+        p = WordPattern(pattern)
         
-    def addReference(self, word, reference):
-        pass
+        for letter in self.databases:
+            for word in self.databases[letter]:
+                if p.conformsToFormat(word):
+                    self._addConformity(word, pattern)
+    
+    def _addConformity(self, word, pattern):
+        self.databases[word[0]][word]["conforms_to"].append(pattern)
+        self.patterns[pattern].append(word)
         
     def close(self):
-        for letter, changed in self.databases_changed_mask.items():
-            if changed:
-                with open("%s/database.d/%s.json" %(self.directory, letter), "w") as database:
-                    json.dump(self.databases[letter], database, indent=4, sort_keys=True)
+        for letter in self.databases:
+            with open("%s/database.d/%s.json" %(self.directory, letter), "w") as database:
+                json.dump(self.databases[letter], database, indent=4, sort_keys=True)
+        
+        for pattern in self.info["known_patterns"]:
+            file_friendly_pattern = pattern.replace("*", ".")
+            with open("%s/database.d/patterns/%s.json" %(self.directory, file_friendly_pattern), "w") as f:
+                    json.dump(self.patterns[pattern], info, indent=4, sort_keys=True)
+        
+        with open("%s/database.d/info.json" % self.directory, "w") as info:
+            json.dump(self.info, info, indent=4, sort_keys=True)
+        
 
 class WordPattern:
 
@@ -71,13 +123,6 @@ class WordPattern:
     '''
     def __init__(self, pattern):
         self.pattern = pattern.lower()
-        self.isNew = True
-    
-    def getIsNew(self):
-        return self.isNew
-    
-    def setIsNew(self, boolean):
-        self.isNew = boolean
     
     def conformsToFormat(self, word):
         if self.UNIQUE_LETTER in self.pattern:
