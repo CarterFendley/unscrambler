@@ -1,16 +1,19 @@
 import logging
+import optparse
+import sys
+
+from database import DataBase
+
+
 logger = logging.getLogger('dashboard')
 log_datefmt = "%H:%M:%S"
 log_format = "%(asctime)s:%(msecs)03d %(levelname)-8s: %(name)-20s: %(message)s"
 
 #!/usr/bin/env python3
 
-import optparse
-import sys
 
-from database import DataBase
 
-class Scrabbler:
+class Unscrambler:
     def __init__(self, options):
         self.database = None
         
@@ -64,4 +67,4 @@ if __name__ == '__main__':
     # Setup logging
     #logging.basicConfig(datefmt=log_datefmt, format=log_format, level=logging.DEBUG if options.verbose else logging.INFO)
     
-    scrabbler = Scrabbler(options)
+    unscrambler = Unscrambler(options)
