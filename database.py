@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+from email._header_value_parser import InvalidParameter
 
 
 ALPHABET = "abcdefghijklmnopqrstuvwxyz"
@@ -19,17 +21,13 @@ class DataBase:
         if(not new):
             #Load all letter databases
             for letter in ALPHABET:
-                try:
-                    with open("%s/database.d/%s.json" %(self.directory, letter)) as database:
-                        self.databases[lettter] = json.load(database)
-                        self.databases_changed_mask[letter] = False
-                except:
-                    print('Error while loading databases. Exiting process...')
-                sys.exit(1)
+                with open("%s/database.d/%s.json" %(self.directory, letter)) as database:
+                    self.databases[letter] = json.load(database)
+                    self.databases_changed_mask[letter] = False
                 
             #Load the info file   
             with open("%s/database.d/info.json" % self.directory) as info:
-                self.info = json.info
+                self.info = json.load(info)
             
             #Load all patterns from info file   
             for pattern in self.info["known_patterns"]:
@@ -68,23 +66,70 @@ class DataBase:
         return self.info["known_pattern"]
     
     def addPattern(self, pattern):
-        self.info["known_patterns"].append(pattern)
-        self._analyzeFor(pattern)
+        '''
+        :params
+        @pattern the format. Use _ any unique letter and * for any letter you can add letters
+                Example: "*A*" finds all that have an A letter
+                Example: "*_*" finds all that have a unique letter
+                Example: "*__*" finds all that have any two adjacent unique letters
+                Example: "*_*_*" finds all that have any two unique letters
+                Example: "*_" finds all that end with a unique letter
+                Example: "_*" finds all that start with a unique letter
+                
+                TODO:
+                Example: "A3A" finds words that contain Two "a" letters seperated by 3 letters 
+            '''
+        pattern = pattern.lower()
+        
+        for char in pattern:
+            if char not in ALPHABET:
+                if char is not "_":
+                    if char is not "*":
+                        raise InvalidParameter
+        
+        print("Tests passed for: \"%s\"" % pattern)
+        
+        if "_" in pattern:
+            print("Starting dynamic analysis for \"%s\"" % pattern)
+            for letter in ALPHABET:
+                compare_pattern = pattern
+                compare_pattern = compare_pattern.replace("_", letter)
+                
+                self.patterns[compare_pattern] = []
+                
+                self.info["known_patterns"].append(compare_pattern)
+                self._analyzeForPattern(compare_pattern)
+        else:
+            self.patterns[pattern] = []
+            
+            self.info["known_patterns"].append(pattern)
+            self._analyzeForPattern(pattern)
     
     def _analyzeForWord(self, word):
+        print("Analyzing \"%s\" for all existing pattern" % word, end="")
         for pattern in self.patterns:
+            
             p = WordPattern(pattern)
             
             if p.conformsToFormat(word):
                 self._addConformity(word, patter)
+        
+        print(": Conforms to %s" % self.getConformities(word))
+        
     
     def _analyzeForPattern(self, pattern):
         p = WordPattern(pattern)
+        count = 0
+        
+        print("Analyzing database for pattern \"%s\"" % pattern, end="")
         
         for letter in self.databases:
             for word in self.databases[letter]:
                 if p.conformsToFormat(word):
+                    count += 1
                     self._addConformity(word, pattern)
+        
+        print(": Found %s words that conform!" % count)
     
     def _addConformity(self, word, pattern):
         self.databases[word[0]][word]["conforms_to"].append(pattern)
@@ -92,31 +137,30 @@ class DataBase:
         
     def close(self):
         for letter in self.databases:
-            with open("%s/database.d/%s.json" %(self.directory, letter), "w") as database:
-                json.dump(self.databases[letter], database, indent=4, sort_keys=True)
+            with open("%s/database.d/%s.json" %(self.directory, letter), "w") as f:
+                json.dump(self.databases[letter], f, indent=4, sort_keys=True)
         
         for pattern in self.info["known_patterns"]:
             file_friendly_pattern = pattern.replace("*", ".")
             with open("%s/database.d/patterns/%s.json" %(self.directory, file_friendly_pattern), "w") as f:
-                    json.dump(self.patterns[pattern], info, indent=4, sort_keys=True)
+                    json.dump(self.patterns[pattern], f, indent=4, sort_keys=True)
         
-        with open("%s/database.d/info.json" % self.directory, "w") as info:
-            json.dump(self.info, info, indent=4, sort_keys=True)
+        with open("%s/database.d/info.json" % self.directory, "w") as f:
+            json.dump(self.info, f, indent=4, sort_keys=True)
         
 
 class WordPattern:
 
-    UNIQUE_LETTER = "_"
     ANY_LETTER = "*"
     
     '''
     :params
     @pattern the format. Use _ any unique letter and * for any letter you can add letters
-            Example: "*_*" finds all that have any unique letter
-            Example: "*__*" finds all that have two adjacent unique letters
-            Example: "*_*_*" finds all that have two unique letters
-            Example: "*_" finds all that end with an unique letter
-            Example: "_*" finds all that start with a letter
+            Example: "*A*" finds all that have an A letter
+            Example: "*AA*" finds all that have two adjacent A letters
+            Example: "*A*A*" finds all that have two A letters
+            Example: "*A" finds all that end with an A letter
+            Example: "A*" finds all that start with an A letter
             
             TODO:
             Example: "A3A" finds words that contain Two "a" letters seperated by 3 letters 
@@ -125,12 +169,6 @@ class WordPattern:
         self.pattern = pattern.lower()
     
     def conformsToFormat(self, word):
-        if self.UNIQUE_LETTER in self.pattern:
-            for letter in ALPHABET:
-                if self._conformsToWildCardFormat(word, self.pattern.replace("_", letter)):
-                    return True
-            return False
-        
         if self._conformsToWildCardFormat(word, self.pattern):
             return True
         return False

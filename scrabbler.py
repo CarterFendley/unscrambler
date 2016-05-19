@@ -31,6 +31,12 @@ class Scrabbler:
             self.database.close()
             sys.exit(0)
             
+        if options.add_pattern is not None:
+            #print(options.add_pattern)
+            self.database.addPattern(options.add_pattern)
+        
+        self.database.close()
+            
             
             
 
@@ -39,7 +45,7 @@ if __name__ == '__main__':
     
     parser.add_option('--add_wordlist', default=None, help='Adds a wordlist to the json database')
     
-    parser.add_option('--analyze_new_formats', default=False, action='store_true', help='Analyze database for new format')
+    parser.add_option('--add_pattern', default=None, help='adds pattern to database')
     
     parser.add_option('--database_dir', default=".", help="Location of the database.d")
     
